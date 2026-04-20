@@ -32,7 +32,7 @@
   const likedItems = ref<Record<string, boolean>>({})
   const showLikedOnly = ref(false)
 
-  const baseUrl = "https://script.google.com/macros/s/AKfycbykXf2qEwwD4t3ldSMN7qXG-ycdwGW7W6NZIxoSgmWyi6VU24UPzZfHar-Tjt8tduZt/exec"
+  const baseUrl = "https://script.google.com/macros/s/AKfycbyCbzlIkFPtqbzw9Zry6toZjQ92neaXg0njxwBgchsFcNOTVvUrBzKvf6z_ADDFNpwU/exec"
 
   const isLoading = ref(false)
   const error = ref("")
