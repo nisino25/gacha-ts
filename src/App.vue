@@ -1,6 +1,6 @@
 <script setup lang="ts">
-  import { ref, onMounted } from 'vue'
-  import data from "./const/data.json"
+  import { ref, onMounted, computed, watchEffect } from 'vue'
+  // import data from "./const/data.json"
 
   type GachaItem = {
     name: string
@@ -12,23 +12,73 @@
   }
 
   // const gachadata = data as GachaItem[]
-  const gachadata: GachaItem[] = data
+  // const gachadata: GachaItem[] = ref([]) as unknown as GachaItem[]
+  const gachadata = ref<GachaItem[]>([])
 
-  const showingYear = ref(
-    Math.max(...gachadata.map(item => Number(item.yearMonth.split('-')[0])))
-  )
+  const showingYear = ref(0)
+
+  watchEffect(() => {
+    if (gachadata.value.length > 0) {
+      showingYear.value = Math.max(
+        ...gachadata.value.map(item =>
+          Number(item.yearMonth.split('-')[0])
+        )
+      )
+    }
+  })
 
   const isSearchOpen = ref(false)
   const search = ref("")
   const likedItems = ref<Record<string, boolean>>({})
   const showLikedOnly = ref(false)
 
+  const baseUrl = "https://script.google.com/macros/s/AKfycbykXf2qEwwD4t3ldSMN7qXG-ycdwGW7W6NZIxoSgmWyi6VU24UPzZfHar-Tjt8tduZt/exec"
+
+  const isLoading = ref(false)
+  const error = ref("")
+
   onMounted(() => {
     const saved = localStorage.getItem("likedItems")
     if (saved) {
       likedItems.value = JSON.parse(saved)
     }
+
+    fetchData()
+
+
   })
+
+  const fetchData = () => {
+    console.log("Fetching data...")
+      const url = `${baseUrl}?callback=jsonpCallback&action=initApp`
+
+      window.jsonpCallback = (data: any) => {
+          console.log("API Response:", data)
+
+          if (data.success) {
+              isLoading.value = false
+
+              gachadata.value = data.data.sort(
+                  (a: GachaItem, b: GachaItem) =>
+                      (b.lastPlayedAt || 0) - (a.lastPlayedAt || 0)
+              )
+          } else {
+              console.error("Error:", data.message)
+          }
+
+          delete window.jsonpCallback
+      }
+
+      const script = document.createElement("script")
+      script.src = url
+      script.async = true
+
+      document.body.appendChild(script)
+
+      script.onload = () => {
+          document.body.removeChild(script)
+      }
+  }
 
   const openSearch = () => {
     isSearchOpen.value = true
@@ -56,121 +106,216 @@
     return !!likedItems.value[item.url]
   }
 
+  const availableYears = computed(() => {
+    const map: Record<string, number> = {}
+
+    gachadata.value.forEach(item => {
+        const year = item.yearMonth.split("-")[0]
+
+        if (!map[year]) {
+            map[year] = 0
+        }
+
+        map[year]++
+    })
+
+    return Object.entries(map)
+        .map(([year, count]) => ({
+            year: Number(year),
+            count
+        }))
+        .sort((a, b) => b.year - a.year)
+})
+
+const filteredItems = computed<GachaItem[]>(() => {
+    if (!search.value) return [...gachadata.value]
+
+    const keyword = search.value.toLowerCase()
+
+    return gachadata.value.filter(item =>
+        item.name.toLowerCase().includes(keyword)
+    )
+})
+const groupedByYearMonth = computed(() => {
+    const grouped: Record<string, GachaItem[]> = {}
+
+    let filtered = gachadata.value
+
+    // ⭐ liked mode
+    if (showLikedOnly.value) {
+        filtered = filtered.filter(item => likedItems.value[item.url])
+
+        filtered.forEach(item => {
+            const year = item.yearMonth.split("-")[0]
+
+            if (!grouped[year]) {
+                grouped[year] = []
+            }
+
+            grouped[year].push(item)
+        })
+
+        Object.keys(grouped).forEach(key => {
+            grouped[key].sort((a, b) => {
+                const [, monthA] = a.yearMonth.split('-')
+                const [, monthB] = b.yearMonth.split('-')
+
+                if (Number(monthA) !== Number(monthB)) {
+                    return Number(monthA) - Number(monthB)
+                }
+
+                return a.week - b.week
+            })
+        })
+
+        return Object.keys(grouped)
+            .sort((a, b) => Number(b) - Number(a))
+            .reduce((acc: Record<string, GachaItem[]>, key) => {
+                acc[key] = grouped[key]
+                return acc
+            }, {})
+    }
+
+    // normal mode
+    filtered = filtered.filter(item =>
+        item.yearMonth.startsWith(String(showingYear.value))
+    )
+
+    filtered.forEach(item => {
+        const yearMonth = item.yearMonth
+
+        if (!grouped[yearMonth]) {
+            grouped[yearMonth] = []
+        }
+
+        grouped[yearMonth].push(item)
+    })
+
+    Object.keys(grouped).forEach(key => {
+        grouped[key].sort((a, b) => a.week - b.week)
+    })
+
+    return Object.keys(grouped)
+        .sort((a, b) => {
+            const [yearA, monthA] = a.split("-").map(Number)
+            const [yearB, monthB] = b.split("-").map(Number)
+
+            return yearB - yearA || monthB - monthA
+        })
+        .reduce((acc: Record<string, GachaItem[]>, key) => {
+            acc[key] = grouped[key]
+            return acc
+        }, {})
+})
+
+
+
+
+
+  // const availableYears = computed(() => {
+  //   const map: Record<string,number> = {}
+
+  //   gachadata.forEach(item => {
+  //     const year = item.yearMonth.split("-")[0]
+
+  //     if (!map[year]) {
+  //         map[year] = 0
+  //     }
+
+  //     map[year]++
+  //   })
+
+  //   return Object.entries(map)
+  //     .map(([year, count]) => ({
+  //       year: Number(year),
+  //       count
+  //     }))
+  //     .sort((a, b) => b.year - a.year)
+  // })
+
+  // const filteredItems = computed<GachaItem[]>(() => {
+  //   if (!search.value) return [...gachadata]
+
+  //   const keyword = search.value.toLowerCase()
+
+  //   return gachadata.filter(item =>
+  //     item.name.toLowerCase().includes(keyword)
+  //   )
+  // })
+
+  // const groupedByYearMonth = computed(() => {
+  //   const grouped: Record<string, GachaItem[]> = {}
+
+  //   let filtered = gachadata
+
+  //   if (showLikedOnly.value) {
+  //     filtered = filtered.filter(item => likedItems.value[item.url])
+
+  //     filtered.forEach(item => {
+  //       const year = item.yearMonth.split("-")[0]
+
+  //       if (!grouped[year]) {
+  //         grouped[year] = []
+  //       }
+
+  //       grouped[year].push(item)
+  //     })
+
+  //     Object.keys(grouped).forEach(key => {
+  //       grouped[key].sort((a, b) => {
+  //         const [, monthA] = a.yearMonth.split('-')
+  //         const [, monthB] = b.yearMonth.split('-')
+
+  //         if (Number(monthA) !== Number(monthB)) {
+  //             return Number(monthA) - Number(monthB)
+  //         }
+
+  //         return a.week - b.week
+  //       })
+  //     })
+
+  //     return Object.keys(grouped)
+  //       .sort((a, b) => Number(b) - Number(a))
+  //       .reduce((acc: Record<string, GachaItem[]>, key) => {
+  //         acc[key] = grouped[key]
+  //         return acc
+  //       }, {})
+  //   }
+
+  //   filtered = filtered.filter(item =>
+  //     item.yearMonth.startsWith(String(showingYear.value))
+  //   )
+
+  //   filtered.forEach(item => {
+  //     const yearMonth = item.yearMonth
+
+  //     if (!grouped[yearMonth]) {
+  //         grouped[yearMonth] = []
+  //     }
+
+  //     grouped[yearMonth].push(item)
+  //   })
+
+  //   Object.keys(grouped).forEach(key => {
+  //     grouped[key].sort((a, b) => a.week - b.week)
+  //   })
+
+  //   return Object.keys(grouped)
+  //     .sort((a, b) => {
+  //       const [yearA, monthA] = a.split("-").map(Number)
+  //       const [yearB, monthB] = b.split("-").map(Number)
+
+  //       return yearB - yearA || monthB - monthA
+  //     })
+  //     .reduce((acc: Record<string, GachaItem[]>, key) => {
+  //       acc[key] = grouped[key]
+  //       return acc
+  //     }, {})
+  // })
+ 
+
   
 
-    // computed: {
-    //   availableYears() {
-    //       const map = {}
-
-    //       this.gachadata.forEach(item => {
-    //           const year = item.yearMonth.split("-")[0]
-
-    //           if (!map[year]) {
-    //               map[year] = 0
-    //           }
-
-    //           map[year]++
-    //       })
-
-    //       return Object.entries(map)
-    //           .map(([year, count]) => ({
-    //               year: Number(year),
-    //               count
-    //           }))
-    //           .sort((a, b) => b.year - a.year)
-    //   },
-
-
-    //   groupedByYearMonth() {
-    //       const grouped = {}
-
-    //       let filtered = this.gachadata
-
-    //       // ⭐ お気に入りモード
-    //       if (this.showLikedOnly) {
-    //           filtered = filtered.filter(item => this.likedItems[item.url])
-
-    //           // 👉 年ごとにグループ
-    //           filtered.forEach(item => {
-    //               const year = item.yearMonth.split("-")[0]
-
-    //               if (!grouped[year]) {
-    //                   grouped[year] = []
-    //               }
-
-    //               grouped[year].push(item)
-    //           })
-
-    //          // 👉 年内で「月 → 週」で昇順ソート
-    //           Object.keys(grouped).forEach(key => {
-    //               grouped[key].sort((a, b) => {
-    //                   const [, monthA] = (a.yearMonth || '').split('-')
-    //                   const [, monthB] = (b.yearMonth || '').split('-')
-
-    //                   // 月で比較
-    //                   if (Number(monthA) !== Number(monthB)) {
-    //                       return Number(monthA) - Number(monthB)
-    //                   }
-
-    //                   // 同じ月なら週で比較
-    //                   return a.week - b.week
-    //               })
-    //           })
-
-    //           // 👉 年で新しい順
-    //           return Object.keys(grouped)
-    //               .sort((a, b) => Number(b) - Number(a))
-    //               .reduce((acc, key) => {
-    //                   acc[key] = grouped[key]
-    //                   return acc
-    //               }, {})
-    //       }
-
-    //       // =========================
-    //       // 通常モード（今まで通り）
-    //       // =========================
-
-    //       filtered = filtered.filter(item =>
-    //           item.yearMonth.startsWith(String(this.showingYear))
-    //       )
-
-    //       filtered.forEach(item => {
-    //           const yearMonth = item.yearMonth
-
-    //           if (!grouped[yearMonth]) {
-    //               grouped[yearMonth] = []
-    //           }
-
-    //           grouped[yearMonth].push(item)
-    //       })
-
-    //       Object.keys(grouped).forEach(key => {
-    //           grouped[key].sort((a, b) => a.week - b.week)
-    //       })
-
-    //       return Object.keys(grouped)
-    //           .sort((a, b) => {
-    //               const [yearA, monthA] = a.split("-").map(Number)
-    //               const [yearB, monthB] = b.split("-").map(Number)
-
-    //               return yearB - yearA || monthB - monthA
-    //           })
-    //           .reduce((acc, key) => {
-    //               acc[key] = grouped[key]
-    //               return acc
-    //           }, {})
-    //   },
-
-    //   filteredItems() {
-    //     if (!this.search) return this.gachadata
-
-    //     const keyword = this.search.toLowerCase()
-
-    //     return this.gachadata.filter(item =>
-    //       item.name.toLowerCase().includes(keyword)
-    //     )
-    //   },
-    // },
    
 
 
@@ -266,28 +411,28 @@
 
 
     <!-- ✅ カンバン -->
-    <div class="flex gap-6 overflow-x-auto">
+    <div class="flex gap-4 overflow-x-auto">
       <div
         v-for="(items, yearMonth) in groupedByYearMonth"
         :key="yearMonth"
-        class="min-w-[300px]"
+        class="w-[250px]"
       >
-        <h2 class="text-xl font-bold mb-4 p-2 bg-gray-200">{{ yearMonth }}（{{ items.length }}）</h2>
+        <h2 class="text-xl font-bold mb-4 p-2 bg-gray-500">{{ yearMonth }}（{{ items.length }}）</h2>
         <div
           v-for="item in items"
           :key="item.url"
-          class="relative bg-white rounded mb-3 shadow border transition hover:shadow-md overflow-hidden"
+          class="relative bg-white rounded mb-3 shadow border transition w-[250px] hover:shadow-md overflow-hidden"
           >
           <!-- <div style="display: block; height: 100px; widows: 100%; background-color: red;"></div> -->
           <a :href="item.url" target="_blank" rel="noopener noreferrer" class="block">
-              <div class="block img-container relative h-[350px] w-full  overflow-hidden">
+              <div class="block img-container relative h-[290px] w-full  overflow-hidden">
                 <img :src="item.thumbnail" class="h-full mb-4 absolute top-0 left-[50%] transform -translate-x-1/2" style="max-width: unset;"/>
               </div>
             </a>
 
           <div class="p-3 ">
 
-            <div class="flex justify-between items-center">
+            <div class="flex justify-between items-center text-xs">
               <strong class="">{{ item.yearMonth.split('-')[1] }}月{{ item.week }}週 - {{ item.kinds }}種</strong>
               <div>
                 <button
