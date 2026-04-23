@@ -192,7 +192,7 @@ const groupedByYearMonth = computed(() => {
     })
 
     Object.keys(grouped).forEach(key => {
-        grouped[key].sort((a, b) => a.week - b.week)
+        grouped[key].sort((a, b) => b.week - a.week)
     })
 
     return Object.keys(grouped)
@@ -324,7 +324,7 @@ const groupedByYearMonth = computed(() => {
 </script>
 
 <template>
-  <div class="p-6">
+  <div class="p-3">
 
     <!-- ✅ 年選択 -->
     <div class="mb-6">
@@ -344,7 +344,7 @@ const groupedByYearMonth = computed(() => {
         @click="openSearch"
         class="ml-4 px-4 py-2 bg-indigo-600 text-white rounded shadow hover:bg-indigo-700"
       >
-        🔍 Search
+        🔍
       </button>
 
       <!-- ⭐ Liked toggle -->
@@ -355,7 +355,7 @@ const groupedByYearMonth = computed(() => {
           ? 'bg-yellow-400 text-black' 
           : 'bg-gray-200 hover:bg-gray-300'"
       >
-        ⭐ Liked
+        ⭐
       </button>
 
       <!-- 🪟 modal -->
@@ -411,51 +411,53 @@ const groupedByYearMonth = computed(() => {
 
 
     <!-- ✅ カンバン -->
-    <div class="flex gap-4 overflow-x-auto">
+    <div class="flex gap-3 overflow-x-auto">
       <div
         v-for="(items, yearMonth) in groupedByYearMonth"
         :key="yearMonth"
         class="w-[250px]"
       >
-        <h2 class="text-xl font-bold mb-4 p-2 bg-gray-500">{{ yearMonth }}（{{ items.length }}）</h2>
-        <div
-          v-for="item in items"
-          :key="item.url"
-          class="relative bg-white rounded mb-3 shadow border transition w-[250px] hover:shadow-md overflow-hidden"
-          >
-          <!-- <div style="display: block; height: 100px; widows: 100%; background-color: red;"></div> -->
-          <a :href="item.url" target="_blank" rel="noopener noreferrer" class="block">
-              <div class="block img-container relative h-[290px] w-full  overflow-hidden">
-                <img :src="item.thumbnail" class="h-full mb-4 absolute top-0 left-[50%] transform -translate-x-1/2" style="max-width: unset;"/>
-              </div>
-            </a>
-
-          <div class="p-3 ">
-
-            <div class="flex justify-between items-center text-xs">
-              <strong class="">{{ item.yearMonth.split('-')[1] }}月{{ item.week }}週 - {{ item.kinds }}種</strong>
-              <div>
-                <button
-                  @click="toggleLike(item)"
-                  class="text-xl transition"
-                >
-                  <span v-if="isLiked(item)" class="text-yellow-400">⭐</span>
-                  <span v-else class="text-gray-300">☆</span>
-                </button>
-                <a
-                  :href="'https://jp.mercari.com/search?keyword=' + item.name + ' めじるしアクセサリー'"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="ml-4 inline-block px-2 py-1 bg-red-500 text-white text-sm font-semibold rounded-lg shadow hover:bg-red-600 hover:shadow-md transition"
-                >
-                  メルカリ
-                </a>
+        <h2 class="text-xl font-bold mb-4 p-1 bg-gray-500">{{ yearMonth }}（{{ items.length }}）</h2>
+        <div class="h-[750px] overflow-y-auto">
+          <div
+            v-for="item in items"
+            :key="item.url"
+            class="relative bg-white rounded mb-3 shadow transition w-[185px] hover:shadow-md overflow-hidden"
+            >
+            <!-- <div style="display: block; height: 100px; widows: 100%; background-color: red;"></div> -->
+            <a :href="item.url" target="_blank" rel="noopener noreferrer" class="block">
+                <div class="block img-container relative h-[215px] w-full  overflow-hidden">
+                  <img :src="item.thumbnail" class="h-full mb-4 absolute top-0 left-[50%] transform -translate-x-1/2" style="max-width: unset;"/>
+                </div>
+              </a>
   
+            <div class="p-2">
+  
+              <div class="flex justify-between items-center text-xs text-gray-400">
+                <strong class="">{{ item.yearMonth.split('-')[1] }}月{{ item.week }}週 - {{ item.kinds }}種</strong>
+                <div class="flex justify-between items-center gap-2">
+                  <button
+                    @click="toggleLike(item)"
+                    class="text-xl transition"
+                  >
+                    <span v-if="isLiked(item)" class="text-yellow-400">⭐</span>
+                    <span v-else class="">☆</span>
+                  </button>
+                  <a
+                    :href="'https://jp.mercari.com/search?keyword=' + item.name + ' めじるしアクセサリー'"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-block border border-black rounded shadow"
+                  >
+                    <img src="./assets/new_mercari_icon_iOS.png" alt="home icon" class="w-[20px] h-auto"/>
+                  </a>
+    
+                </div>
               </div>
+              <p class="font-bold text-sm text-black">{{ item.name }}</p>
             </div>
-            <p class="font-bold">{{ item.name }}</p>
+  
           </div>
-
         </div>
       </div>
     </div>
