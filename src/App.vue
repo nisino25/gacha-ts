@@ -8,7 +8,8 @@
     yearMonth: string
     week: number
     thumbnail: string
-    kinds: number
+    kinds: number,
+    lastPlayedAt?: number
   }
 
   // const gachadata = data as GachaItem[]
@@ -32,10 +33,17 @@
   const likedItems = ref<Record<string, boolean>>({})
   const showLikedOnly = ref(false)
 
+  declare global {
+      interface Window {
+          jsonpCallback?: (data: any) => void
+      }
+  }
+
+
   const baseUrl = "https://script.google.com/macros/s/AKfycbyCbzlIkFPtqbzw9Zry6toZjQ92neaXg0njxwBgchsFcNOTVvUrBzKvf6z_ADDFNpwU/exec"
 
   const isLoading = ref(false)
-  const error = ref("")
+  // const error = ref("")
 
   onMounted(() => {
     const saved = localStorage.getItem("likedItems")
