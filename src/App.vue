@@ -332,7 +332,7 @@ const groupedByYearMonth = computed(() => {
 </script>
 
 <template>
-  <div class="p-3">
+  <div class="p-3 pt-1">
 
     <!-- ✅ 年選択 -->
     <div class="mb-6">
@@ -426,7 +426,7 @@ const groupedByYearMonth = computed(() => {
         class="w-[250px]"
       >
         <h2 class="text-xl font-bold mb-4 p-1 bg-gray-500">{{ yearMonth }}（{{ items.length }}）</h2>
-        <div class="h-[675px] overflow-y-auto">
+        <div class="h-[700px] overflow-y-auto">
           <div
             v-for="item in items"
             :key="item.url"
