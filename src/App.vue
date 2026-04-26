@@ -322,9 +322,8 @@
       <div
         v-for="(items, yearMonth) in groupedByYearMonth"
         :key="yearMonth"
-        class="w-[185px]"
       >
-        <h2 class="text-xl font-bold mb-4 p-1 bg-gray-500">{{ yearMonth }}（{{ items.length }}）</h2>
+        <h2 class="text-xl font-bold mb-4 p-1 bg-gray-500 w-[185px]">{{ yearMonth }}（{{ items.length }}）</h2>
         <div class="h-[665px] md:h-auto overflow-y-auto">
           <div
             v-for="item in items"
