@@ -8,8 +8,7 @@
     yearMonth: string
     week: number
     thumbnail: string
-    kinds: number,
-    lastPlayedAt?: number
+    kinds: number
   }
 
   // const gachadata = data as GachaItem[]
@@ -40,9 +39,9 @@
   }
 
 
-  const baseUrl = "https://script.google.com/macros/s/AKfycbyCbzlIkFPtqbzw9Zry6toZjQ92neaXg0njxwBgchsFcNOTVvUrBzKvf6z_ADDFNpwU/exec"
+  const baseUrl = "https://script.google.com/macros/s/AKfycbzy56999zI1usHrJaB3luoSN6YmQ2OPkOA7SzddsbT_9UwB3ImX3lY7jaNp3qw9-UhY/exec"
 
-  const isLoading = ref(false)
+  const isLoading = ref(true)
   // const error = ref("")
 
   onMounted(() => {
@@ -65,11 +64,7 @@
 
           if (data.success) {
               isLoading.value = false
-
-              gachadata.value = data.data.sort(
-                  (a: GachaItem, b: GachaItem) =>
-                      (b.lastPlayedAt || 0) - (a.lastPlayedAt || 0)
-              )
+              gachadata.value = data.data
           } else {
               console.error("Error:", data.message)
           }
@@ -115,220 +110,119 @@
   }
 
   const availableYears = computed(() => {
-    const map: Record<string, number> = {}
+      const map: Record<string, number> = {}
 
-    gachadata.value.forEach(item => {
-        const year = item.yearMonth.split("-")[0]
+      gachadata.value.forEach(item => {
+          const year = item.yearMonth.split("-")[0]
 
-        if (!map[year]) {
-            map[year] = 0
-        }
+          if (!map[year]) {
+              map[year] = 0
+          }
 
-        map[year]++
-    })
+          map[year]++
+      })
 
-    return Object.entries(map)
-        .map(([year, count]) => ({
-            year: Number(year),
-            count
-        }))
-        .sort((a, b) => b.year - a.year)
-})
+      return Object.entries(map)
+          .map(([year, count]) => ({
+              year: Number(year),
+              count
+          }))
+          .sort((a, b) => b.year - a.year)
+  })
 
-const filteredItems = computed<GachaItem[]>(() => {
-    if (!search.value) return [...gachadata.value]
+  const filteredItems = computed<GachaItem[]>(() => {
+      if (!search.value) return [...gachadata.value]
 
-    const keyword = search.value.toLowerCase()
+      const keyword = search.value.toLowerCase()
 
-    return gachadata.value.filter(item =>
-        item.name.toLowerCase().includes(keyword)
-    )
-})
-const groupedByYearMonth = computed(() => {
-    const grouped: Record<string, GachaItem[]> = {}
+      return gachadata.value.filter(item =>
+          item.name.toLowerCase().includes(keyword)
+      )
+  })
+  const groupedByYearMonth = computed(() => {
+      const grouped: Record<string, GachaItem[]> = {}
 
-    let filtered = gachadata.value
+      let filtered = gachadata.value
 
-    // ⭐ liked mode
-    if (showLikedOnly.value) {
-        filtered = filtered.filter(item => likedItems.value[item.url])
+      // ⭐ liked mode
+      if (showLikedOnly.value) {
+          filtered = filtered.filter(item => likedItems.value[item.url])
 
-        filtered.forEach(item => {
-            const year = item.yearMonth.split("-")[0]
+          filtered.forEach(item => {
+              const year = item.yearMonth.split("-")[0]
 
-            if (!grouped[year]) {
-                grouped[year] = []
-            }
+              if (!grouped[year]) {
+                  grouped[year] = []
+              }
 
-            grouped[year].push(item)
-        })
+              grouped[year].push(item)
+          })
 
-        Object.keys(grouped).forEach(key => {
-            grouped[key].sort((a, b) => {
-                const [, monthA] = a.yearMonth.split('-')
-                const [, monthB] = b.yearMonth.split('-')
+          Object.keys(grouped).forEach(key => {
+              grouped[key].sort((a, b) => {
+                  const [, monthA] = a.yearMonth.split('-')
+                  const [, monthB] = b.yearMonth.split('-')
 
-                if (Number(monthA) !== Number(monthB)) {
-                    return Number(monthA) - Number(monthB)
-                }
+                  if (Number(monthA) !== Number(monthB)) {
+                      return Number(monthA) - Number(monthB)
+                  }
 
-                return a.week - b.week
-            })
-        })
+                  return a.week - b.week
+              })
+          })
 
-        return Object.keys(grouped)
-            .sort((a, b) => Number(b) - Number(a))
-            .reduce((acc: Record<string, GachaItem[]>, key) => {
-                acc[key] = grouped[key]
-                return acc
-            }, {})
-    }
+          return Object.keys(grouped)
+              .sort((a, b) => Number(b) - Number(a))
+              .reduce((acc: Record<string, GachaItem[]>, key) => {
+                  acc[key] = grouped[key]
+                  return acc
+              }, {})
+      }
 
-    // normal mode
-    filtered = filtered.filter(item =>
-        item.yearMonth.startsWith(String(showingYear.value))
-    )
+      // normal mode
+      filtered = filtered.filter(item =>
+          item.yearMonth.startsWith(String(showingYear.value))
+      )
 
-    filtered.forEach(item => {
-        const yearMonth = item.yearMonth
+      filtered.forEach(item => {
+          const yearMonth = item.yearMonth
 
-        if (!grouped[yearMonth]) {
-            grouped[yearMonth] = []
-        }
+          if (!grouped[yearMonth]) {
+              grouped[yearMonth] = []
+          }
 
-        grouped[yearMonth].push(item)
-    })
+          grouped[yearMonth].push(item)
+      })
 
-    Object.keys(grouped).forEach(key => {
-        grouped[key].sort((a, b) => b.week - a.week)
-    })
+      Object.keys(grouped).forEach(key => {
+          grouped[key].sort((a, b) => {
+              // ① week (descending)
+              if (b.week !== a.week) {
+                  return b.week - a.week
+              }
 
-    return Object.keys(grouped)
-        .sort((a, b) => {
-            const [yearA, monthA] = a.split("-").map(Number)
-            const [yearB, monthB] = b.split("-").map(Number)
+              // ② name (ascending)
+              return a.name.localeCompare(b.name, 'ja')
+          })
+      })
 
-            return yearB - yearA || monthB - monthA
-        })
-        .reduce((acc: Record<string, GachaItem[]>, key) => {
-            acc[key] = grouped[key]
-            return acc
-        }, {})
-})
+      return Object.keys(grouped)
+          .sort((a, b) => {
+              const [yearA, monthA] = a.split("-").map(Number)
+              const [yearB, monthB] = b.split("-").map(Number)
 
+              return yearB - yearA || monthB - monthA
+          })
+          .reduce((acc: Record<string, GachaItem[]>, key) => {
+              acc[key] = grouped[key]
+              return acc
+          }, {})
+  })
 
+  const isBandai = (url: string) => {
+    return url.includes("gashapon.jp")
+  }
 
-
-
-  // const availableYears = computed(() => {
-  //   const map: Record<string,number> = {}
-
-  //   gachadata.forEach(item => {
-  //     const year = item.yearMonth.split("-")[0]
-
-  //     if (!map[year]) {
-  //         map[year] = 0
-  //     }
-
-  //     map[year]++
-  //   })
-
-  //   return Object.entries(map)
-  //     .map(([year, count]) => ({
-  //       year: Number(year),
-  //       count
-  //     }))
-  //     .sort((a, b) => b.year - a.year)
-  // })
-
-  // const filteredItems = computed<GachaItem[]>(() => {
-  //   if (!search.value) return [...gachadata]
-
-  //   const keyword = search.value.toLowerCase()
-
-  //   return gachadata.filter(item =>
-  //     item.name.toLowerCase().includes(keyword)
-  //   )
-  // })
-
-  // const groupedByYearMonth = computed(() => {
-  //   const grouped: Record<string, GachaItem[]> = {}
-
-  //   let filtered = gachadata
-
-  //   if (showLikedOnly.value) {
-  //     filtered = filtered.filter(item => likedItems.value[item.url])
-
-  //     filtered.forEach(item => {
-  //       const year = item.yearMonth.split("-")[0]
-
-  //       if (!grouped[year]) {
-  //         grouped[year] = []
-  //       }
-
-  //       grouped[year].push(item)
-  //     })
-
-  //     Object.keys(grouped).forEach(key => {
-  //       grouped[key].sort((a, b) => {
-  //         const [, monthA] = a.yearMonth.split('-')
-  //         const [, monthB] = b.yearMonth.split('-')
-
-  //         if (Number(monthA) !== Number(monthB)) {
-  //             return Number(monthA) - Number(monthB)
-  //         }
-
-  //         return a.week - b.week
-  //       })
-  //     })
-
-  //     return Object.keys(grouped)
-  //       .sort((a, b) => Number(b) - Number(a))
-  //       .reduce((acc: Record<string, GachaItem[]>, key) => {
-  //         acc[key] = grouped[key]
-  //         return acc
-  //       }, {})
-  //   }
-
-  //   filtered = filtered.filter(item =>
-  //     item.yearMonth.startsWith(String(showingYear.value))
-  //   )
-
-  //   filtered.forEach(item => {
-  //     const yearMonth = item.yearMonth
-
-  //     if (!grouped[yearMonth]) {
-  //         grouped[yearMonth] = []
-  //     }
-
-  //     grouped[yearMonth].push(item)
-  //   })
-
-  //   Object.keys(grouped).forEach(key => {
-  //     grouped[key].sort((a, b) => a.week - b.week)
-  //   })
-
-  //   return Object.keys(grouped)
-  //     .sort((a, b) => {
-  //       const [yearA, monthA] = a.split("-").map(Number)
-  //       const [yearB, monthB] = b.split("-").map(Number)
-
-  //       return yearB - yearA || monthB - monthA
-  //     })
-  //     .reduce((acc: Record<string, GachaItem[]>, key) => {
-  //       acc[key] = grouped[key]
-  //       return acc
-  //     }, {})
-  // })
- 
-
-  
-
-   
-
-
-
-  // }
 </script>
 
 <template>
@@ -417,24 +311,33 @@ const groupedByYearMonth = computed(() => {
 
     </div>
 
+    <div v-if="isLoading">
+      <p class="text-center text-gray-500">Loading...</p>
+    </div>
+
+
 
     <!-- ✅ カンバン -->
     <div class="flex gap-3 overflow-x-auto">
       <div
         v-for="(items, yearMonth) in groupedByYearMonth"
         :key="yearMonth"
-        class="w-[250px]"
+        class="w-[185px]"
       >
         <h2 class="text-xl font-bold mb-4 p-1 bg-gray-500">{{ yearMonth }}（{{ items.length }}）</h2>
-        <div class="h-[680px] overflow-y-auto">
+        <div class="h-[665px] md:h-auto overflow-y-auto">
           <div
             v-for="item in items"
             :key="item.url"
-            class="relative bg-white rounded mb-3 shadow transition w-[185px] hover:shadow-md overflow-hidden"
+            class="relative rounded mb-3 shadow transition w-full hover:shadow-md overflow-hidden"
+            :class="isBandai(item.url) ? 'bg-white' : 'bg-red-100'"
             >
             <!-- <div style="display: block; height: 100px; widows: 100%; background-color: red;"></div> -->
             <a :href="item.url" target="_blank" rel="noopener noreferrer" class="block">
-                <div class="block img-container relative h-[215px] w-full  overflow-hidden">
+                <div 
+                  class="block img-container relative w-full  overflow-hidden"
+                  :class="isBandai(item.url) ? 'h-[215px]' : 'h-[185px]'"
+                  >
                   <img :src="item.thumbnail" class="h-full mb-4 absolute top-0 left-[50%] transform -translate-x-1/2" style="max-width: unset;"/>
                 </div>
               </a>
@@ -442,7 +345,8 @@ const groupedByYearMonth = computed(() => {
             <div class="p-2">
   
               <div class="flex justify-between items-center text-xs text-gray-400">
-                <strong class="">{{ item.yearMonth.split('-')[1] }}月{{ item.week }}週 - {{ item.kinds }}種</strong>
+                <strong v-if="isBandai(item.url)" class="">{{ item.yearMonth.split('-')[1] }}月{{ item.week }}週 - {{ item.kinds }}種</strong>
+                <strong v-else class="">{{ item.yearMonth.split('-')[1] }}月 - {{ item.kinds }}種 - <span class="text-red-500">宝</span></strong>
                 <div class="flex justify-between items-center gap-2">
                   <button
                     @click="toggleLike(item)"
@@ -462,7 +366,7 @@ const groupedByYearMonth = computed(() => {
     
                 </div>
               </div>
-              <p class="font-bold text-sm text-black">{{ item.name }}</p>
+              <p class="font-bold text-sm text-black text-left">{{ item.name }}</p>
             </div>
   
           </div>
