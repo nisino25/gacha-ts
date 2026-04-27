@@ -39,7 +39,7 @@
   }
 
 
-  const baseUrl = "https://script.google.com/macros/s/AKfycbzy56999zI1usHrJaB3luoSN6YmQ2OPkOA7SzddsbT_9UwB3ImX3lY7jaNp3qw9-UhY/exec"
+  const baseUrl = "https://script.google.com/macros/s/AKfycbytfmr_PTuU4pbuojVTAjMuLaTpm0TpPtt3xv4J5wYF9WU5M10aRm2DjS4DJFC7XiQ/exec"
 
   const isLoading = ref(true)
   // const error = ref("")
