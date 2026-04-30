@@ -93,6 +93,7 @@
 
               isLoading.value = false
               gachadata.value = uniqueData
+              localStorage.setItem('gachaData', JSON.stringify(uniqueData))
             }
           } else {
               console.error("Error:", data.message)
