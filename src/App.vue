@@ -39,7 +39,7 @@
   }
 
 
-  const baseUrl = "https://script.google.com/macros/s/AKfycbytfmr_PTuU4pbuojVTAjMuLaTpm0TpPtt3xv4J5wYF9WU5M10aRm2DjS4DJFC7XiQ/exec"
+  const baseUrl = "https://script.google.com/macros/s/AKfycbyI4gORtS87cI-CLop0ykUh57wIKnzhQg2baRcMFUbw7K5ad4kvJiqwewzTjWrrFRli/exec"
 
   const isLoading = ref(true)
   // const error = ref("")
@@ -49,6 +49,15 @@
     if (saved) {
       likedItems.value = JSON.parse(saved)
     }
+
+    // get data from localStorage if exists
+    const cachedData = localStorage.getItem('gachaData')
+    if (cachedData) {
+      gachadata.value = JSON.parse(cachedData)
+      isLoading.value = false
+    }
+
+
 
     fetchData()
 
@@ -63,8 +72,28 @@
           console.log("API Response:", data)
 
           if (data.success) {
+            const uniqueData: GachaItem[] = Array.from(
+              new Map<string, GachaItem>(
+                data.data.map((item: GachaItem) => [item.url, item])
+              ).values()
+            )
+
+            const exisitingGachaData = localStorage.getItem('gachaData')
+
+            const parsedExisting = exisitingGachaData
+              ? JSON.parse(exisitingGachaData)
+              : []
+
+            if (parsedExisting.length !== uniqueData.length) {
+              alert(
+                "New data coming" +
+                `\nPrevious count: ${parsedExisting.length}` +
+                `\nNew count: ${uniqueData.length}`
+              )
+
               isLoading.value = false
-              gachadata.value = data.data
+              gachadata.value = uniqueData
+            }
           } else {
               console.error("Error:", data.message)
           }
